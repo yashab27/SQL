@@ -1,0 +1,6 @@
+persona,experiment_bucket,exposed_users,rec_ctr,conversion_rate_7d,bookings_per_user
+Advance Planner,treatment,3553,0.075946403018082476,1,1.8888263439347028
+Deal-Driven Explorer,treatment,3907,0.082352711208413157,1,2.2436652162784729
+Other,treatment,10939,0.058081937875495336,1,1.1313648413931763
+Repeat / Local Explorer,treatment,848,0.059740259740259739,1,2.1804245283018844
+Spontaneous / Last-Minute Booker,treatment,38354,0.070053323402872972,1,1.2637795275590611
