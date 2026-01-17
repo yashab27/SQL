@@ -1,0 +1,81 @@
+WITH
+-- BOOKINGS FEATURES
+bookings AS (
+  SELECT
+    customer_id,
+    COUNT(*) AS total_bookings,
+    AVG(DATE_DIFF(experience_date, DATE(created_at), DAY)) AS avg_lead_time_days,
+    AVG(number_of_guests) AS avg_guests
+  FROM `headoutdata-assignment.user_persona_data.headout_dubai_bookings`
+  WHERE city = 'Dubai'
+  GROUP BY customer_id
+),
+
+-- EVENTS FEATURES (NULL SAFE)
+events AS (
+  SELECT
+    customer_id,
+
+    COUNT(DISTINCT session_id) AS sessions_count,
+
+    COUNTIF(
+      LOWER(event_name) = 'search'
+      OR LOWER(event_type) = 'search'
+    ) AS searches_count,
+
+    SUM(
+      COALESCE(search_filters_used, 0)
+      + COALESCE(num_filters_applied, 0)
+    ) AS total_filters_used,
+
+    MAX(COALESCE(customer_lifetime_bookings, 0)) AS lifetime_bookings,
+
+    MAX(COALESCE(active_discount_flag, 0)) AS used_discount,
+
+    SUM(
+      CASE WHEN LOWER(device) LIKE '%mobile%' THEN 1 ELSE 0 END
+    ) AS mobile_events
+
+  FROM `headoutdata-assignment.user_persona_data.headout_events_data`
+  WHERE city = 'Dubai'
+  GROUP BY customer_id
+)
+
+SELECT
+  COALESCE(b.customer_id, e.customer_id) AS customer_id,
+
+  -- booking features
+  COALESCE(avg_lead_time_days, 999) AS avg_lead_time_days,
+  COALESCE(avg_guests, 1) AS avg_guests,
+  COALESCE(total_bookings, 0) AS total_bookings,
+
+  -- event features (now non-null)
+  COALESCE(sessions_count, 0) AS sessions_count,
+  COALESCE(searches_count, 0) AS searches_count,
+  COALESCE(total_filters_used, 0) AS total_filters_used,
+  COALESCE(lifetime_bookings, 0) AS lifetime_bookings,
+  COALESCE(used_discount, 0) AS used_discount,
+
+  CASE
+    WHEN avg_lead_time_days >= 7
+         AND total_filters_used >= 3
+         AND avg_guests >= 2
+      THEN 'Advance Planner'
+
+    WHEN avg_lead_time_days <= 2
+         AND mobile_events >= sessions_count * 0.6
+      THEN 'Spontaneous / Last-Minute Booker'
+
+    WHEN total_filters_used >= 5
+         AND used_discount = 1
+      THEN 'Deal-Driven Explorer'
+
+    WHEN lifetime_bookings >= 3
+      THEN 'Repeat / Local Explorer'
+
+    ELSE 'Other'
+  END AS persona
+
+FROM bookings b
+FULL OUTER JOIN events e
+  ON b.customer_id = e.customer_id;
